@@ -4,8 +4,9 @@
 #include <vector>
 #include <sstream>
 #include <armadillo>
-
 #include <string>
+
+#include "Vector3D.h"
 
 using namespace std;
 void affichage(void);
@@ -16,11 +17,38 @@ void affiche_repere(void);
 void mouse(int, int, int, int);
 void mouseMotion(int, int);
 // void reshape(int,int);
-float t = .5;
 
-vector<vector<double>> curve = {};
-double steps = 20;
-double tSteps = 1/steps;
+// Structure pour représenter le repère de Frenet
+struct FrenetFrame {
+    Vector3D T; // Vecteur tangent
+    Vector3D N; // Vecteur normal
+    Vector3D B; // Vecteur binormal
+};
+
+// Points de contrôle, degré et vecteur nodal
+std::vector<Vector3D> pointsControle = {
+    { -1.5, -1.0, 0.0 },
+    { -0.5, 1.0, 0.0 },
+    { 0.5, -1.0, 0.0 },
+    { 1.5, 1.0, 0.0 },
+    { 2.5, -1.0, 0.0 }
+};
+int degre = 3;
+arma::vec vecteurNodal = { 0, 0, 0, 0, 1, 2, 3, 4, 4, 4, 4 }; 
+
+// Stockage des points de la courbe
+std::vector<Vector3D> pointsCourbe;
+
+// Stockage des dérivées et du repère de Frenet
+std::vector<Vector3D> deriveePremiere;
+std::vector<Vector3D> deriveeSeconde;
+std::vector<FrenetFrame> repereFrenet;
+std::vector<double> rayonCourbure;
+
+int resolution = 5;
+// Incrément
+double deltaU = 1.0 / resolution; // Par exemple, si résolution = 1000
+double current_u = 0.5f;
 
 // variables globales pour OpenGL
 bool mouseLeftDown;
@@ -42,6 +70,51 @@ float low_shininess = 5.0f;
 float high_shininess = 100.0f;
 float mat_emission[] = {0.3f, 0.2f, 0.2f, 0.0f};
 
+// Fonction de base B-Spline récursive
+double B_Spline(int i, int d, double u, const arma::vec& knots) {
+  if (d == 0) {
+    if (knots[i] <= u && u < knots[i + 1])
+        return 1.0;
+    else
+        return 0.0;
+  } else {
+    double left = 0.0, right = 0.0;
+    double denom1 = knots[i + d] - knots[i];
+    if (denom1 != 0)
+        left = (u - knots[i]) / denom1 * B_Spline(i, d - 1, u, knots);
+    double denom2 = knots[i + d + 1] - knots[i + 1];
+    if (denom2 != 0)
+        right = (knots[i + d + 1] - u) / denom2 * B_Spline(i + 1, d - 1, u, knots);
+    return left + right;
+  }
+}
+
+// Fonction pour générer les points de la courbe B-Spline
+std::vector<Vector3D> genererBSpline(const std::vector<Vector3D>& controlePoints, int d, const arma::vec& knots, int resolution) {
+  std::vector<Vector3D> courbe;
+  int n = controlePoints.size() - 1;
+  double u_min = knots[d];
+  double u_max = knots[n + 1];
+
+  for (int i = 0; i <= resolution; ++i) {
+      double u = u_min + (u_max - u_min) * i / resolution;
+      double x = 0.0, y = 0.0, z = 0.0;
+      for (int j = 0; j <= n; ++j) {
+          double Nj = B_Spline(j, d, u, knots);
+          x += Nj * controlePoints[j].x;
+          y += Nj * controlePoints[j].y;
+          z += Nj * controlePoints[j].z;
+      }
+      courbe.push_back(Vector3D{ x, y, z });
+  }
+  return courbe;
+}
+
+// Initialisation des points de la courbe
+void initialiserCourbe() {
+    pointsCourbe = genererBSpline(pointsControle, degre, vecteurNodal, resolution);
+}
+
 void initOpenGl()
 {
 
@@ -61,7 +134,7 @@ void initOpenGl()
   glDepthFunc(GL_LESS);
   glEnable(GL_DEPTH_TEST);
   // glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-  //  glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE|GLUT_RGB);
+  // glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE|GLUT_RGB);
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -74,39 +147,23 @@ void initOpenGl()
 
 void displayCourbe(void)
 {
-  arma::mat P(3,3);
-  P(0,0) = 0.0; P(0,1) = 0.0; P(0,2) = 0.0;
-  P(1,0) = 1.0; P(1,1) = 1.0; P(1,2) = 0.0;
-  P(2,0) = 0.0; P(2,1) = 1.0; P(2,2) = 1.0; 
+  if (pointsCourbe.empty()) return;
 
-  arma::mat Mb(3,3);
-  Mb(0,0) = 1.0; Mb(0,1) = -2.0; Mb(0,2) = 1.0;
-  Mb(1,0) = -2.0; Mb(1,1) = 2.0; Mb(1,2) = 0.0;
-  Mb(2,0) = 1.0; Mb(2,1) = 0.0; Mb(2,2) = 0.0;
-
-  arma::mat T(1,3);
-
-  double t = 0;
-
-  while(t<=1) {
-    double tt = t*t;
-    T(0,0) = tt; T(0,1) = t; T(0,2) = 1; 
-    arma::mat vArm = T*Mb*P;
-    vector<double> v = { vArm(0,0), vArm(0,1), vArm(0,2) };
-    curve.push_back(v);
+  glColor3f(1.0f, 1.0f, 1.0f); // Couleur de la courbe
+  glBegin(GL_LINE_STRIP);
+  for (const auto& point : pointsCourbe) {
+      glVertex3f(point.x, point.y, point.z);
   }
+  glEnd();
 
-  for(int i = 0; i <= curve.size(); i++) {
-    double v[3] = curve[i];
-    double v_next[3] = curve[i+1];
-    glColor3f(0.58, 0.0, 0.82);
-    glBegin(GL_LINES);
-      glVertex3d(v[0], v[1], v[2]);
-      glVertex3d(v_next[0], v_next[1], v_next[2]);
-    glEnd();
+  // Optionnel : Afficher les points de contrôle
+  glPointSize(5.0f);
+  glColor3f(1.0f, 0.0f, 0.0f); // Couleur des points de contrôle
+  glBegin(GL_POINTS);
+  for (const auto& point : pointsControle) {
+      glVertex3f(point.x, point.y, point.z);
   }
-
-
+  glEnd();
 }
 
 int main(int argc, char **argv)
@@ -135,6 +192,8 @@ int main(int argc, char **argv)
   //-------------------------------
   initOpenGl();
   //-------------------------------
+
+  initialiserCourbe();
 
   /* Entree dans la boucle principale glut */
   glutMainLoop();
@@ -193,16 +252,16 @@ void clavier(unsigned char touche, int x, int y)
 
   switch (touche)
   {
-  case '+': //
-    t += .1;
-    if (t > 1)
-      t = 1;
+  case '+': // Augmenter u
+    current_u += 0.1;
+    if (current_u > 1.0)
+        current_u = 1.0;
     glutPostRedisplay();
     break;
-  case '-': //* ajustement du t
-    t -= .1;
-    if (t < 0)
-      t = 0;
+  case '-': // Diminuer u
+    current_u -= 0.1;
+    if (current_u < 0.0)
+        current_u = 0.0;
     glutPostRedisplay();
     break;
   case 'f': //* affichage en mode fil de fer
