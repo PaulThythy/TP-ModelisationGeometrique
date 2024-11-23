@@ -33,3 +33,7 @@
 
 # build directories
 bin
+
+# IDE directories
+.vscode
+.vs
