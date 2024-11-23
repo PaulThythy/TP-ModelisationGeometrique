@@ -39,16 +39,14 @@ arma::vec vecteurNodal = { 0, 0, 0, 0, 1, 2, 3, 4, 4, 4, 4 };
 // Stockage des points de la courbe
 std::vector<Vector3D> pointsCourbe;
 
-// Stockage des dérivées et du repère de Frenet
-std::vector<Vector3D> deriveePremiere;
-std::vector<Vector3D> deriveeSeconde;
-std::vector<FrenetFrame> repereFrenet;
-std::vector<double> rayonCourbure;
-
 int resolution = 5;
 // Incrément
 double deltaU = 1.0 / resolution; // Par exemple, si résolution = 1000
 double current_u = 0.5f;
+
+// Variables globales pour u_min et u_max
+double u_min;
+double u_max;
 
 // variables globales pour OpenGL
 bool mouseLeftDown;
@@ -110,9 +108,68 @@ std::vector<Vector3D> genererBSpline(const std::vector<Vector3D>& controlePoints
   return courbe;
 }
 
+// Fonction pour calculer le point sur la courbe à un paramètre u donné
+Vector3D computePointAt(double u) {
+    Vector3D point = {0.0, 0.0, 0.0};
+    int n = pointsControle.size() - 1;
+    for (int i = 0; i <= n; ++i) {
+        double Ni = B_Spline(i, degre, u, vecteurNodal);
+        point = point + pointsControle[i] * Ni;
+    }
+    return point;
+}
+
+// Fonction pour calculer la dérivée première par différences finies
+Vector3D computeFirstDerivativeAt(double u) {
+    double du = 1e-5; // petit incrément
+    double u_forward = std::min(u + du, u_max);
+    double u_backward = std::max(u - du, u_min);
+    Vector3D point_forward = computePointAt(u_forward);
+    Vector3D point_backward = computePointAt(u_backward);
+    return (point_forward - point_backward) / (2.0 * du);
+}
+
+// Fonction pour calculer la dérivée seconde par différences finies
+Vector3D computeSecondDerivativeAt(double u) {
+    double du = 1e-5; // petit incrément
+    double u_forward = std::min(u + du, u_max);
+    double u_backward = std::max(u - du, u_min);
+    Vector3D point_forward = computePointAt(u_forward);
+    Vector3D point_current = computePointAt(u);
+    Vector3D point_backward = computePointAt(u_backward);
+    return (point_forward - point_current * 2.0 + point_backward) / (du * du);
+}
+
+// Fonction pour calculer le repère de Frenet à un paramètre u donné
+FrenetFrame computeFrenetFrameAt(double u) {
+    Vector3D dC = computeFirstDerivativeAt(u);
+    Vector3D ddC = computeSecondDerivativeAt(u);
+    Vector3D T = dC.normalize();
+    Vector3D numerator = ddC - T * (ddC.dot(T));
+    Vector3D N = numerator.normalize();
+    Vector3D B = T.cross(N);
+    return FrenetFrame{ T, N, B };
+}
+
+// Fonction pour calculer le rayon de courbure à un paramètre u donné
+double computeCurvatureAt(double u) {
+    Vector3D dC = computeFirstDerivativeAt(u);
+    Vector3D ddC = computeSecondDerivativeAt(u);
+    Vector3D crossProduct = dC.cross(ddC);
+    double numerator = crossProduct.norm();
+    double denominator = pow(dC.norm(), 3);
+    double curvature = numerator / denominator;
+    double radius = (curvature != 0.0) ? 1.0 / curvature : 0.0;
+    return radius;
+}
+
 // Initialisation des points de la courbe
 void initialiserCourbe() {
+    int n = pointsControle.size() - 1;
+    u_min = vecteurNodal[degre];
+    u_max = vecteurNodal[n + 1];
     pointsCourbe = genererBSpline(pointsControle, degre, vecteurNodal, resolution);
+    current_u = u_min; // Initialiser current_u à u_min
 }
 
 void initOpenGl()
@@ -237,6 +294,28 @@ void affichage(void)
   glRotatef(cameraAngleY, 0., 1., 0.);
   affiche_repere();
   displayCourbe();
+
+  // Calculer et dessiner le repère de Frenet
+  Vector3D point = computePointAt(current_u);
+  FrenetFrame frenet = computeFrenetFrameAt(current_u);
+
+  glBegin(GL_LINES);
+  // Vecteur tangent T (rouge)
+  glColor3f(1.0, 0.0, 0.0);
+  glVertex3f(point.x, point.y, point.z);
+  glVertex3f(point.x + frenet.T.x, point.y + frenet.T.y, point.z + frenet.T.z);
+
+  // Vecteur normal N (vert)
+  glColor3f(0.0, 1.0, 0.0);
+  glVertex3f(point.x, point.y, point.z);
+  glVertex3f(point.x + frenet.N.x, point.y + frenet.N.y, point.z + frenet.N.z);
+
+  // Vecteur binormal B (bleu)
+  glColor3f(0.0, 0.0, 1.0);
+  glVertex3f(point.x, point.y, point.z);
+  glVertex3f(point.x + frenet.B.x, point.y + frenet.B.y, point.z + frenet.B.z);
+  glEnd();
+
   glPopMatrix();
   /* on force l'affichage du resultat */
 
@@ -252,13 +331,13 @@ void clavier(unsigned char touche, int x, int y)
 
   switch (touche)
   {
-  case '+': // Augmenter u
+  case 'a': // Augmenter u
     current_u += 0.1;
     if (current_u > 1.0)
         current_u = 1.0;
     glutPostRedisplay();
     break;
-  case '-': // Diminuer u
+  case 'z': // Diminuer u
     current_u -= 0.1;
     if (current_u < 0.0)
         current_u = 0.0;
