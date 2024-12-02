@@ -39,7 +39,7 @@ arma::vec vecteurNodal = { 0, 0, 0, 0, 1, 2, 3, 4, 4, 4, 4 };
 // Stockage des points de la courbe
 std::vector<Vector3D> pointsCourbe;
 
-int resolution = 5;
+int resolution = 10;
 // Incrément
 double deltaU = 1.0 / resolution; // Par exemple, si résolution = 1000
 double current_u = 0.5f;
@@ -332,15 +332,15 @@ void clavier(unsigned char touche, int x, int y)
   switch (touche)
   {
   case 'a': // Augmenter u
-    current_u += 0.1;
-    if (current_u > 1.0)
-        current_u = 1.0;
+    current_u += deltaU;
+    if (current_u > u_max)
+        current_u = u_max;
     glutPostRedisplay();
     break;
   case 'z': // Diminuer u
-    current_u -= 0.1;
-    if (current_u < 0.0)
-        current_u = 0.0;
+    current_u -= deltaU;
+    if (current_u < u_min)
+        current_u = u_min;
     glutPostRedisplay();
     break;
   case 'f': //* affichage en mode fil de fer
