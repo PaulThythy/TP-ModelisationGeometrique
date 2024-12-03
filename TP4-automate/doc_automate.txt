@@ -1,0 +1,81 @@
+Utilisation de l'automate "postscript"
+--------------------------------
+
+./postscript fichier.txt nb_iterations
+
+fichier.txt = fichier texte dans lequel est décrit l'automate
+
+nb_iterations = nombre d'itérations appliquées à l'automate
+
+
+FOMRAT DU FICHIER DE DESCRIPTION DE L'AUTOMATE
+-----------------------------------------
+
+les états avec pour chaque état :
+- un nom : chaine de caractères
+-la primitive d'affichage associée sous forme d'une liste de points (= polygone)
+-la dimension de l'espace associé à l'état (= nombre de coordonnées des points décrivant la primitive)
+
+exemple :
+A : 
+1 O  0 
+0 .5 0 
+0 .5 1 
+=> espace de dimension 3 avec comme primitive d'affichage le triangle passant par les points (1,0,0) (0,.5,.5) et (0,0,1)
+
+- les transformations avec etat de départ et etat d'arrivé
+exemple 
+T0:A-A
+?
+
+(le ? indique que les noms des coeff seront automatiquement affectés par le programme)
+La dimmension de l'opérateur est déterminée à partir des dimentions des espaces assoicés aux états.
+(ici 3x3)
+
+sinon on peut spécifier des noms aux coefficients (nom = chaine de caractère)
+T0:A-B
+a b c 
+d e f 
+g h i
+
+ATTENTION dans ce cas il faut affecter les bonnes dimensions à la matrice.
+
+
+il doit y avoir toujours un etat initial appelé "z" (sa primitive d'affichage n'ai pas utilisée)
+
+il est possible d'affecter des valeurs aux symbols
+a=0.6
+b=0.4 
+
+Exemple ensemble de cantor dans l'espace barycentrique
+-------------------------
+z:
+1 0 
+0 1 
+
+T0:z-z
+1  v1
+0  v2
+
+T1:z-z
+v2 0
+v1 1
+
+v1=.67
+v2=.33
+
+CONDITIONS DE RACCORD
+-------------------
+il est possibke d'exprimer les conditions de raccord sous la forme d'égalités matricielles
+B0 Ts = B0 T0
+
+l'automate résoud le système
+-si toute les variables sont affectées, il réalise la visualisation
+-s'il existe des variables non afféctées => il renvoie sur la sortie standard l'automate avec
+ la résolution des contraintes et les variables restant à affecter.
+
+
+
+
+
+
