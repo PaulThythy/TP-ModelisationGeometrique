@@ -5,8 +5,7 @@
 #include <sstream>
 #include <string>
 #include <cmath>
-
-#include "Vector3D.h"
+#include <armadillo>
 
 using namespace std;
 void affichage(void);
@@ -18,6 +17,14 @@ void mouse(int, int, int, int);
 void mouseMotion(int, int);
 // void reshape(int,int);
 float t = .5;
+
+// Structure pour représenter le repère de Frenet
+struct FrenetFrame
+{
+  arma::mat T; // Vecteur tangent
+  arma::mat N; // Vecteur normal
+  arma::mat B; // Vecteur binormal
+};
 
 // variables globales pour OpenGL
 bool mouseLeftDown;
@@ -57,6 +64,171 @@ GLfloat weights[4][4] = {
     {1.0, 1.0, 1.0, 1.0},
     {1.0, 1.0, 1.0, 1.0}};
 
+float basisFunction(int i, int p, float u, const GLfloat *knotVector)
+{
+  if (p == 0)
+  {
+    return (u >= knotVector[i] && u < knotVector[i + 1]) ? 1.0f : 0.0f;
+  }
+
+  float denom1 = knotVector[i + p] - knotVector[i];
+  float denom2 = knotVector[i + p + 1] - knotVector[i + 1];
+
+  float term1 = (denom1 != 0) ? ((u - knotVector[i]) / denom1) * basisFunction(i, p - 1, u, knotVector) : 0.0f;
+  float term2 = (denom2 != 0) ? ((knotVector[i + p + 1] - u) / denom2) * basisFunction(i + 1, p - 1, u, knotVector) : 0.0f;
+
+  return term1 + term2;
+}
+
+arma::mat surfacePoint(float u, float v) {
+    arma::mat numerator = arma::zeros<arma::mat>(3, 1); // Numérateur (vecteur colonne 3x1)
+    float denominator = 0.0f; // Dénominateur (scalaire)
+
+    for (int i = 0; i <= n; ++i) { // Parcours des points de contrôle en u
+        for (int j = 0; j <= m; ++j) { // Parcours des points de contrôle en v
+            // Calcul des fonctions de base en u et v
+            float Ni = basisFunction(i, p, u, knotU);
+            float Nj = basisFunction(j, q, v, knotV);
+
+            // Calcul de la contribution du point de contrôle
+            float weight = weights[i][j];
+
+            // Point de contrôle (formaté en vecteur colonne 3x1)
+            arma::mat controlPoint = { ctrlPoints[i][j][0], 
+                                       ctrlPoints[i][j][1], 
+                                       ctrlPoints[i][j][2] };
+            controlPoint = controlPoint.t();
+
+            // Accumulation des contributions pondérées
+            numerator += weight * Ni * Nj * controlPoint;
+            denominator += weight * Ni * Nj;
+        }
+    }
+
+    // Validation du dénominateur pour éviter une division par zéro
+    if (denominator == 0.0f) {
+        throw std::logic_error("surfacePoint: denominator is zero");
+    }
+
+    return numerator / denominator; // Calcul final (point sur la surface)
+}
+
+arma::mat computePartialDerivativeU(float u, float v)
+{
+  float delta = 0.01f; // Pas de calcul
+  arma::mat S1 = surfacePoint(u + delta, v);
+  arma::mat S0 = surfacePoint(u - delta, v);
+  return (S1 - S0) / (2.0f * delta);
+}
+
+arma::mat computePartialDerivativeV(float u, float v)
+{
+  float delta = 0.01f; // Pas de calcul
+  arma::mat S1 = surfacePoint(u, v + delta);
+  arma::mat S0 = surfacePoint(u, v - delta);
+  return (S1 - S0) / (2.0f * delta);
+}
+
+arma::mat computeSecondPartialDerivativeUU(float u, float v)
+{
+  float delta = 0.01f; // Pas de calcul
+  arma::mat S1 = surfacePoint(u + delta, v);
+  arma::mat S0 = surfacePoint(u, v);
+  arma::mat S2 = surfacePoint(u - delta, v);
+  return (S1 - 2.0f * S0 + S2) / (delta * delta);
+}
+
+arma::mat computeSecondPartialDerivativeVV(float u, float v)
+{
+  float delta = 0.01f; // Pas de calcul
+  arma::mat S1 = surfacePoint(u, v + delta);
+  arma::mat S0 = surfacePoint(u, v);
+  arma::mat S2 = surfacePoint(u, v - delta);
+  return (S1 - 2.0f * S0 + S2) / (delta * delta);
+}
+
+float computeCurvatureRadiusAt(float u, float v)
+{
+  arma::mat du = computePartialDerivativeU(u, v);
+  arma::mat dv = computePartialDerivativeV(u, v);
+  arma::mat duu = computeSecondPartialDerivativeUU(u, v);
+  arma::mat dvv = computeSecondPartialDerivativeVV(u, v);
+
+  float numerator = arma::norm(arma::cross(duu, dvv));
+  float denominator = std::pow(arma::norm(du), 3);
+  return numerator / denominator;
+}
+
+FrenetFrame computeFrenetFrameAt(float u, float v)
+{
+  // Dérivées premières
+  arma::mat du = computePartialDerivativeU(u, v);
+  arma::mat dv = computePartialDerivativeV(u, v);
+
+  // Tangente (vecteur T)
+  arma::mat T = arma::normalise(du + dv);
+
+  // Dérivées secondes
+  arma::mat duu = computeSecondPartialDerivativeUU(u, v);
+  arma::mat dvv = computeSecondPartialDerivativeVV(u, v);
+
+  // Normale (vecteur N)
+  arma::mat N = arma::normalise(duu + dvv);
+
+  // Binormale (vecteur B)
+  arma::mat B = arma::cross(T, N);
+
+  return {T, N, B};
+}
+
+void displayFrenetFrameAt(float u, float v) {
+    FrenetFrame frame = computeFrenetFrameAt(u, v);
+    arma::mat point = surfacePoint(u, v);
+
+    GLfloat pointArray[3] = {
+        static_cast<GLfloat>(point(0, 0)),
+        static_cast<GLfloat>(point(1, 0)),
+        static_cast<GLfloat>(point(2, 0))
+    };
+
+    glBegin(GL_LINES);
+
+    // Tangente T
+    arma::mat tangent = point + frame.T; // Evaluation explicite
+    GLfloat tangentArray[3] = {
+        static_cast<GLfloat>(tangent(0, 0)),
+        static_cast<GLfloat>(tangent(1, 0)),
+        static_cast<GLfloat>(tangent(2, 0))
+    };
+    glColor3f(1.0f, 0.0f, 0.0f); // Rouge
+    glVertex3fv(pointArray);
+    glVertex3fv(tangentArray);
+
+    // Normale N
+    arma::mat normal = point + frame.N; // Evaluation explicite
+    GLfloat normalArray[3] = {
+        static_cast<GLfloat>(normal(0, 0)),
+        static_cast<GLfloat>(normal(1, 0)),
+        static_cast<GLfloat>(normal(2, 0))
+    };
+    glColor3f(0.0f, 1.0f, 0.0f); // Vert
+    glVertex3fv(pointArray);
+    glVertex3fv(normalArray);
+
+    // Binormale B
+    arma::mat binormal = point + frame.B; // Evaluation explicite
+    GLfloat binormalArray[3] = {
+        static_cast<GLfloat>(binormal(0, 0)),
+        static_cast<GLfloat>(binormal(1, 0)),
+        static_cast<GLfloat>(binormal(2, 0))
+    };
+    glColor3f(0.0f, 0.0f, 1.0f); // Bleu
+    glVertex3fv(pointArray);
+    glVertex3fv(binormalArray);
+
+    glEnd();
+}
+
 void initOpenGl()
 {
 
@@ -90,66 +262,7 @@ void initOpenGl()
 
 //------------------------------------------------------
 
-// Fonction pour calculer les fonctions de base B-spline N_{i,p}(u)
-double Nip(int i, int p, double u, const GLfloat *U)
-{
-  if (p == 0)
-  {
-    if (U[i] <= u && u < U[i + 1])
-    {
-      return 1.0;
-    }
-    else
-    {
-      return 0.0;
-    }
-  }
-  else
-  {
-    double denom1 = U[i + p] - U[i];
-    double denom2 = U[i + p + 1] - U[i + 1];
-    double term1 = 0.0, term2 = 0.0;
-
-    if (denom1 != 0.0)
-    {
-      term1 = (u - U[i]) / denom1 * Nip(i, p - 1, u, U);
-    }
-    if (denom2 != 0.0)
-    {
-      term2 = (U[i + p + 1] - u) / denom2 * Nip(i + 1, p - 1, u, U);
-    }
-    return term1 + term2;
-  }
-}
-
-// Fonction pour calculer la dérivée des fonctions de base B-spline N'_{i,p}(u)
-double NipDerivative(int i, int p, double u, const GLfloat *U)
-{
-  if (p == 0)
-  {
-    return 0.0;
-  }
-  else
-  {
-    double denom1 = U[i + p] - U[i];
-    double denom2 = U[i + p + 1] - U[i + 1];
-    double term1 = 0.0, term2 = 0.0;
-
-    if (denom1 != 0.0)
-    {
-      term1 = (1.0 / denom1) * Nip(i, p - 1, u, U);
-    }
-    if (denom2 != 0.0)
-    {
-      term2 = (-1.0 / denom2) * Nip(i + 1, p - 1, u, U);
-    }
-    return term1 + term2 +
-           (u - U[i]) / denom1 * NipDerivative(i, p - 1, u, U) +
-           (U[i + p + 1] - u) / denom2 * NipDerivative(i + 1, p - 1, u, U);
-  }
-}
-
-void displayCourbe(void)
+void displaySurface(void)
 {
   GLUnurbsObj *nurbs = gluNewNurbsRenderer();
 
@@ -170,116 +283,9 @@ void displayCourbe(void)
   gluDeleteNurbsRenderer(nurbs);
 }
 
-void afficheVecteursTangents(GLfloat u, GLfloat v)
-{
-  GLfloat point[3], du[3], dv[3], normale[3];
-
-  GLfloat delta = 0.01f;
-  GLfloat point_u_plus_delta[3], point_v_plus_delta[3];
-
-  double numerator[3] = {0.0, 0.0, 0.0};
-  double denominator = 0.0;
-
-  double du_numerator[3] = {0.0, 0.0, 0.0};
-  double du_denominator = 0.0;
-
-  double dv_numerator[3] = {0.0, 0.0, 0.0};
-  double dv_denominator = 0.0;
-
-  for (int i = 0; i <= n; ++i)
-  {
-    double Nu = Nip(i, p, u, knotU);
-    double dNu = NipDerivative(i, p, u, knotU);
-    for (int j = 0; j <= m; ++j)
-    {
-      double Nv = Nip(j, q, v, knotV);
-      double dNv = NipDerivative(j, q, v, knotV);
-      double w = weights[i][j];
-      double B = Nu * Nv * w;
-
-      // Accumuler le numérateur et le dénominateur pour S(u,v)
-      for (int k = 0; k < 3; ++k)
-      {
-        numerator[k] += B * ctrlPoints[i][j][k];
-      }
-      denominator += B;
-
-      // Accumuler pour la dérivée par rapport à u
-      double Bu = dNu * Nv * w;
-      for (int k = 0; k < 3; ++k)
-      {
-        du_numerator[k] += Bu * ctrlPoints[i][j][k];
-      }
-      du_denominator += Bu;
-
-      // Accumuler pour la dérivée par rapport à v
-      double Bv = Nu * dNv * w;
-      for (int k = 0; k < 3; ++k)
-      {
-        dv_numerator[k] += Bv * ctrlPoints[i][j][k];
-      }
-      dv_denominator += Bv;
-    }
-  }
-
-  // Calcul du point S(u,v)
-  point[0] = numerator[0] / denominator;
-  point[1] = numerator[1] / denominator;
-  point[2] = numerator[2] / denominator;
-
-  // Calcul des dérivées partielles
-  du[0] = (du_numerator[0] * denominator - numerator[0] * du_denominator) / (denominator * denominator);
-  du[1] = (du_numerator[1] * denominator - numerator[1] * du_denominator) / (denominator * denominator);
-  du[2] = (du_numerator[2] * denominator - numerator[2] * du_denominator) / (denominator * denominator);
-
-  dv[0] = (dv_numerator[0] * denominator - numerator[0] * dv_denominator) / (denominator * denominator);
-  dv[1] = (dv_numerator[1] * denominator - numerator[1] * dv_denominator) / (denominator * denominator);
-  dv[2] = (dv_numerator[2] * denominator - numerator[2] * dv_denominator) / (denominator * denominator);
-
-  // Calcul de la normale (produit vectoriel)
-  normale[0] = du[1] * dv[2] - du[2] * dv[1];
-  normale[1] = du[2] * dv[0] - du[0] * dv[2];
-  normale[2] = du[0] * dv[1] - du[1] * dv[0];
-
-  // Normalisation de la normale
-  float norme = sqrt(normale[0] * normale[0] + normale[1] * normale[1] + normale[2] * normale[2]);
-  if (norme != 0.0f)
-  {
-    normale[0] /= norme;
-    normale[1] /= norme;
-    normale[2] /= norme;
-  }
-
-  // Dessiner le point et les vecteurs
-  glPointSize(5.0);
-  glColor3f(1.0, 0.0, 0.0); // Rouge pour le point
-  glBegin(GL_POINTS);
-  glVertex3fv(point);
-  glEnd();
-
-  glColor3f(0.0, 1.0, 0.0); // Vert pour du
-  glBegin(GL_LINES);
-  glVertex3fv(point);
-  glVertex3f(point[0] + du[0], point[1] + du[1], point[2] + du[2]);
-  glEnd();
-
-  glColor3f(0.0, 0.0, 1.0); // Bleu pour dv
-  glBegin(GL_LINES);
-  glVertex3fv(point);
-  glVertex3f(point[0] + dv[0], point[1] + dv[1], point[2] + dv[2]);
-  glEnd();
-
-  glColor3f(1.0, 1.0, 0.0); // Jaune pour la normale
-  glBegin(GL_LINES);
-  glVertex3fv(point);
-  glVertex3f(point[0] + normale[0], point[1] + normale[1], point[2] + normale[2]);
-  glEnd();
-}
-
 int main(int argc, char **argv)
 {
-  /* initialisation de glut et creation
-     de la fenetre */
+  /* initialisation de glut et creation de la fenetre */
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGB);
   glutInitWindowPosition(200, 200);
@@ -344,8 +350,8 @@ void affichage(void)
   glRotatef(cameraAngleX, 1., 0., 0.);
   glRotatef(cameraAngleY, 0., 1., 0.);
   affiche_repere();
-  displayCourbe();
-  afficheVecteursTangents(u, v);
+  displaySurface();
+  displayFrenetFrameAt(u, v);
   glPopMatrix();
   glFlush();
   glutSwapBuffers();
