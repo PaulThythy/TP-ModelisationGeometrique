@@ -186,6 +186,31 @@ void initialiserCourbe()
   current_u = u_min; // Initialiser current_u à u_min
 }
 
+// Affiche un cercle le long de la courbe
+void displayCircle() {
+  int nCircleSegments = 20; // Nombre de segments du cercle
+    double circleRadius = 0.2; // Rayon du cercle
+    const double EPSILON = 1e-6;
+    double deltaU_circle = (u_max - u_min) / (resolution * 10); // Ajustez le facteur selon vos besoins
+
+    glColor3f(0.7f, 0.7f, 0.7f); // Couleur des cercles
+
+    for (double u = u_min; u <= u_max + EPSILON; u += deltaU_circle)
+    {
+        Vector3D point = computePointAt(u);
+        FrenetFrame frame = computeFrenetFrameAt(u);
+
+        glBegin(GL_LINE_LOOP);
+        for (int j = 0; j < nCircleSegments; ++j)
+        {
+            double theta = 2.0 * M_PI * double(j) / double(nCircleSegments);
+            Vector3D circlePoint = point + (frame.N * cos(theta) + frame.B * sin(theta)) * circleRadius;
+            glVertex3f(circlePoint.x, circlePoint.y, circlePoint.z);
+        }
+        glEnd();
+    }
+}
+
 void initOpenGl()
 {
 
@@ -312,6 +337,7 @@ void affichage(void)
   glRotatef(cameraAngleY, 0., 1., 0.);
   affiche_repere();
   displayCourbe();
+  displayCircle();
 
   // Calculer et dessiner le repère de Frenet
   Vector3D point = computePointAt(current_u);
