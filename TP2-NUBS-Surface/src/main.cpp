@@ -64,53 +64,97 @@ GLfloat weights[4][4] = {
     {1.0, 1.0, 1.0, 1.0},
     {1.0, 1.0, 1.0, 1.0}};
 
-float basisFunction(int i, int p, float u, const GLfloat *knotVector)
+// Trouver l'indice du noeud (knot span) pour un paramètre donné
+int findKnotSpan(int n, int p, float u, GLfloat knotVector[])
 {
-  if (p == 0)
+  if (u >= knotVector[n + 1])
   {
-    return (u >= knotVector[i] && u < knotVector[i + 1]) ? 1.0f : 0.0f;
+    return n;
   }
-
-  float denom1 = knotVector[i + p] - knotVector[i];
-  float denom2 = knotVector[i + p + 1] - knotVector[i + 1];
-
-  float term1 = (denom1 != 0) ? ((u - knotVector[i]) / denom1) * basisFunction(i, p - 1, u, knotVector) : 0.0f;
-  float term2 = (denom2 != 0) ? ((knotVector[i + p + 1] - u) / denom2) * basisFunction(i + 1, p - 1, u, knotVector) : 0.0f;
-
-  return term1 + term2;
+  if (u <= knotVector[p])
+  {
+    return p;
+  }
+  int low = p;
+  int high = n + 1;
+  int mid = (low + high) / 2;
+  while (u < knotVector[mid] || u >= knotVector[mid + 1])
+  {
+    if (u < knotVector[mid])
+    {
+      high = mid;
+    }
+    else
+    {
+      low = mid;
+    }
+    mid = (low + high) / 2;
+  }
+  return mid;
 }
 
-arma::mat surfacePoint(float u, float v) {
-    arma::mat numerator = arma::zeros<arma::mat>(3, 1); // Numérateur (vecteur colonne 3x1)
-    float denominator = 0.0f; // Dénominateur (scalaire)
-
-    for (int i = 0; i <= n; ++i) { // Parcours des points de contrôle en u
-        for (int j = 0; j <= m; ++j) { // Parcours des points de contrôle en v
-            // Calcul des fonctions de base en u et v
-            float Ni = basisFunction(i, p, u, knotU);
-            float Nj = basisFunction(j, q, v, knotV);
-
-            // Calcul de la contribution du point de contrôle
-            float weight = weights[i][j];
-
-            // Point de contrôle (formaté en vecteur colonne 3x1)
-            arma::mat controlPoint = { ctrlPoints[i][j][0], 
-                                       ctrlPoints[i][j][1], 
-                                       ctrlPoints[i][j][2] };
-            controlPoint = controlPoint.t();
-
-            // Accumulation des contributions pondérées
-            numerator += weight * Ni * Nj * controlPoint;
-            denominator += weight * Ni * Nj;
-        }
+// Calculer les fonctions de base B-spline non nulles
+void basisFunctions(int i, float u, int p, GLfloat knotVector[], float N[])
+{
+  N[0] = 1.0;
+  float left[p + 1];
+  float right[p + 1];
+  for (int j = 1; j <= p; j++)
+  {
+    left[j] = u - knotVector[i + 1 - j];
+    right[j] = knotVector[i + j] - u;
+    float saved = 0.0;
+    for (int r = 0; r < j; r++)
+    {
+      float temp = N[r] / (right[r + 1] + left[j - r]);
+      N[r] = saved + right[r + 1] * temp;
+      saved = left[j - r] * temp;
     }
+    N[j] = saved;
+  }
+}
 
-    // Validation du dénominateur pour éviter une division par zéro
-    if (denominator == 0.0f) {
-        throw std::logic_error("surfacePoint: denominator is zero");
+// Évaluer le point de surface NURBS à (u, v)
+arma::mat surfacePoint(float u, float v)
+{
+  int numCtrlPointsU = n + 1; // n = degré en u
+  int numCtrlPointsV = m + 1; // m = degré en v
+
+  // Trouver les indices des nœuds pour u et v
+  int spanU = findKnotSpan(n, p, u, knotU);
+  int spanV = findKnotSpan(m, q, v, knotV);
+
+  // Calculer les fonctions de base pour u et v
+  float Nu[p + 1];
+  float Nv[q + 1];
+  basisFunctions(spanU, u, p, knotU, Nu);
+  basisFunctions(spanV, v, q, knotV, Nv);
+
+  arma::mat S = arma::zeros<arma::mat>(3, 1);
+  float denominator = 0.0f;
+
+  // Calculer le point de surface en utilisant les fonctions de base et les poids
+  for (int l = 0; l <= q; l++)
+  {
+    float temp = 0.0f;
+    arma::mat tempPoint = arma::zeros<arma::mat>(3, 1);
+    for (int k = 0; k <= p; k++)
+    {
+      int uIndex = spanU - p + k;
+      int vIndex = spanV - q + l;
+      float w = weights[uIndex][vIndex];
+      float basis = Nu[k] * Nv[l] * w;
+      arma::mat P(3, 1);
+      P(0, 0) = ctrlPoints[uIndex][vIndex][0];
+      P(1, 0) = ctrlPoints[uIndex][vIndex][1];
+      P(2, 0) = ctrlPoints[uIndex][vIndex][2];
+      tempPoint += basis * P;
+      denominator += basis;
     }
-
-    return numerator / denominator; // Calcul final (point sur la surface)
+    S += tempPoint;
+  }
+  S /= denominator;
+  return S;
 }
 
 arma::mat computePartialDerivativeU(float u, float v)
@@ -181,52 +225,49 @@ FrenetFrame computeFrenetFrameAt(float u, float v)
   return {T, N, B};
 }
 
-void displayFrenetFrameAt(float u, float v) {
-    FrenetFrame frame = computeFrenetFrameAt(u, v);
-    arma::mat point = surfacePoint(u, v);
+void displayFrenetFrameAt(float u, float v)
+{
+  FrenetFrame frame = computeFrenetFrameAt(u, v);
+  arma::mat point = surfacePoint(u, v);
 
-    GLfloat pointArray[3] = {
-        static_cast<GLfloat>(point(0, 0)),
-        static_cast<GLfloat>(point(1, 0)),
-        static_cast<GLfloat>(point(2, 0))
-    };
+  GLfloat pointArray[3] = {
+      static_cast<GLfloat>(point(0, 0)),
+      static_cast<GLfloat>(point(1, 0)),
+      static_cast<GLfloat>(point(2, 0))};
 
-    glBegin(GL_LINES);
+  glBegin(GL_LINES);
 
-    // Tangente T
-    arma::mat tangent = point + frame.T; // Evaluation explicite
-    GLfloat tangentArray[3] = {
-        static_cast<GLfloat>(tangent(0, 0)),
-        static_cast<GLfloat>(tangent(1, 0)),
-        static_cast<GLfloat>(tangent(2, 0))
-    };
-    glColor3f(1.0f, 0.0f, 0.0f); // Rouge
-    glVertex3fv(pointArray);
-    glVertex3fv(tangentArray);
+  // Tangente T
+  arma::mat tangent = point + frame.T; // Evaluation explicite
+  GLfloat tangentArray[3] = {
+      static_cast<GLfloat>(tangent(0, 0)),
+      static_cast<GLfloat>(tangent(1, 0)),
+      static_cast<GLfloat>(tangent(2, 0))};
+  glColor3f(1.0f, 0.0f, 0.0f); // Rouge
+  glVertex3fv(pointArray);
+  glVertex3fv(tangentArray);
 
-    // Normale N
-    arma::mat normal = point + frame.N; // Evaluation explicite
-    GLfloat normalArray[3] = {
-        static_cast<GLfloat>(normal(0, 0)),
-        static_cast<GLfloat>(normal(1, 0)),
-        static_cast<GLfloat>(normal(2, 0))
-    };
-    glColor3f(0.0f, 1.0f, 0.0f); // Vert
-    glVertex3fv(pointArray);
-    glVertex3fv(normalArray);
+  // Normale N
+  arma::mat normal = point + frame.N; // Evaluation explicite
+  GLfloat normalArray[3] = {
+      static_cast<GLfloat>(normal(0, 0)),
+      static_cast<GLfloat>(normal(1, 0)),
+      static_cast<GLfloat>(normal(2, 0))};
+  glColor3f(0.0f, 1.0f, 0.0f); // Vert
+  glVertex3fv(pointArray);
+  glVertex3fv(normalArray);
 
-    // Binormale B
-    arma::mat binormal = point + frame.B; // Evaluation explicite
-    GLfloat binormalArray[3] = {
-        static_cast<GLfloat>(binormal(0, 0)),
-        static_cast<GLfloat>(binormal(1, 0)),
-        static_cast<GLfloat>(binormal(2, 0))
-    };
-    glColor3f(0.0f, 0.0f, 1.0f); // Bleu
-    glVertex3fv(pointArray);
-    glVertex3fv(binormalArray);
+  // Binormale B
+  arma::mat binormal = point + frame.B; // Evaluation explicite
+  GLfloat binormalArray[3] = {
+      static_cast<GLfloat>(binormal(0, 0)),
+      static_cast<GLfloat>(binormal(1, 0)),
+      static_cast<GLfloat>(binormal(2, 0))};
+  glColor3f(0.0f, 0.0f, 1.0f); // Bleu
+  glVertex3fv(pointArray);
+  glVertex3fv(binormalArray);
 
-    glEnd();
+  glEnd();
 }
 
 void initOpenGl()
@@ -327,6 +368,7 @@ void affiche_repere(void)
   glVertex2f(0., 0.);
   glVertex2f(0., 1.);
   glEnd();
+  
   glBegin(GL_LINES);
   glColor3f(0.0, 0.0, 1.0);
   glVertex3f(0., 0., 0.);
@@ -391,29 +433,28 @@ void clavier(unsigned char touche, int x, int y)
     break;
   case 'u':
     u += 0.05f;
-    if (u > 1.0f)
-      u = 1.0f;
+    if (u > knotU[n + p + 1]) // ou la valeur maximale appropriée
+      u = knotU[n + p + 1];
     glutPostRedisplay();
     break;
   case 'U':
     u -= 0.05f;
-    if (u > 1.0f)
-      u = 1.0f;
+    if (u < knotU[0]) // ou la valeur minimale appropriée
+      u = knotU[0];
     glutPostRedisplay();
     break;
   case 'v':
     v += 0.05f;
-    if (v > 1.0f)
-      v = 1.0f;
+    if (v > knotV[n + p + 1]) // ou la valeur maximale appropriée
+      v = knotV[n + p + 1];
     glutPostRedisplay();
     break;
   case 'V':
     v -= 0.05f;
-    if (v > 1.0f)
-      v = 1.0f;
+    if (v < knotV[0]) // ou la valeur minimale appropriée
+      v = knotV[0];
     glutPostRedisplay();
     break;
-
   case 'q':
     exit(0);
   }
