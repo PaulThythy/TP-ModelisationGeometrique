@@ -19,11 +19,11 @@ void mouseMotion(int, int);
 float t = .5;
 
 // Structure pour représenter le repère de Frenet
-struct FrenetFrame
+struct SurfaceFrame
 {
   arma::mat T; // Vecteur tangent
   arma::mat N; // Vecteur normal
-  arma::mat B; // Vecteur binormal
+  arma::mat B; // Vecteur tangent
 };
 
 // variables globales pour OpenGL
@@ -208,31 +208,29 @@ float computeCurvatureRadiusAt(float u, float v)
   return numerator / denominator;
 }
 
-FrenetFrame computeFrenetFrameAt(float u, float v)
+SurfaceFrame computeSurfaceFrameAt(float u, float v)
 {
   // Dérivées premières
   arma::mat du = computePartialDerivativeU(u, v);
   arma::mat dv = computePartialDerivativeV(u, v);
 
-  // Tangente (vecteur T)
-  arma::mat T = arma::normalise(du + dv);
+  // Normale
+  arma::mat N = arma::normalise(arma::cross(du, dv));
 
-  // Dérivées secondes
-  arma::mat duu = computeSecondPartialDerivativeUU(u, v);
-  arma::mat dvv = computeSecondPartialDerivativeVV(u, v);
+  // Premier vecteur tangent T (direction u)
+  arma::mat T = arma::normalise(du);
 
-  // Normale (vecteur N)
-  arma::mat N = arma::normalise(duu + dvv);
-
-  // Binormale (vecteur B)
-  arma::mat B = arma::cross(T, N);
+  // Second vecteur tangent B (direction orthogonale dans le plan tangent)
+  // On utilise Gram-Schmidt : on projette dv sur T et on soustrait pour orthogonaliser.
+  arma::mat dv_proj = dv - arma::dot(dv, T)*T;
+  arma::mat B = arma::normalise(dv_proj);
 
   return {T, N, B};
 }
 
-void displayFrenetFrameAt(float u, float v)
+void displaySurfaceFrameAt(float u, float v)
 {
-  FrenetFrame frame = computeFrenetFrameAt(u, v);
+  SurfaceFrame frame = computeSurfaceFrameAt(u, v);
   arma::mat point = surfacePoint(u, v);
 
   GLfloat pointArray[3] = {
@@ -262,7 +260,7 @@ void displayFrenetFrameAt(float u, float v)
   glVertex3fv(pointArray);
   glVertex3fv(normalArray);
 
-  // Binormale B
+  // tangente B
   arma::mat binormal = point + frame.B; // Evaluation explicite
   GLfloat binormalArray[3] = {
       static_cast<GLfloat>(binormal(0, 0)),
@@ -474,7 +472,7 @@ void affichage(void)
   affiche_repere();
   //displaySurface();
   displayCurvatureSurface();
-  displayFrenetFrameAt(u, v);
+  displaySurfaceFrameAt(u, v);
   drawParametricCircleOnSurface();
   glPopMatrix();
   glFlush();
