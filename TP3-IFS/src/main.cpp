@@ -11,7 +11,7 @@ void mouse(int, int, int, int);
 void mouseMotion(int, int);
 // void reshape(int,int);
 
-static int nbi = 5;
+static int nbi = 20;
 static int nb_transfo = 0;
 static Ifs *ifs = NULL;
 
@@ -41,7 +41,8 @@ int main(int argc, char **argv)
   glColor3f(1.0, 1.0, 1.0);
   glPointSize(1.0);
 
-  ifs = new Ifs();
+  ifs = new Ifs(nbi);
+  ifs->ComputeApproximation();
   /* enregistrement des fonctions de rappel */
   glutDisplayFunc(affichage);
   glutKeyboardFunc(clavier);
@@ -97,7 +98,7 @@ void affichage(void)
   glRotatef(cameraAngleX, 1., 0., 0.);
   glRotatef(cameraAngleY, 0., 1., 0.);
   affiche_repere();
-  ifs->display(nbi);
+  ifs->display();
   glPopMatrix();
   /* on force l'affichage du resultat */
   glFlush();
