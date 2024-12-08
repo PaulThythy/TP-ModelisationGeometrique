@@ -58,6 +58,11 @@ GLfloat knotV[] = {0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 3.0, 3.0};
 GLfloat u = (knotU[p] + knotU[n+1]) * 0.5f;
 GLfloat v = (knotV[q] + knotV[m+1]) * 0.5f; 
 
+GLfloat u_min = knotU[p];
+GLfloat u_max = knotU[n+1];
+GLfloat v_min = knotV[q];
+GLfloat v_max = knotV[m+1];
+
 GLfloat weights[4][4] = {
     {1.0, 1.0, 1.0, 1.0},
     {1.0, 1.0, 1.0, 1.0},
@@ -291,6 +296,59 @@ void drawParametricCircleOnSurface() {
     glEnd();
 }
 
+void displayCurvatureSurface() {
+  int resU = 20;
+  int resV = 20;
+
+  float du = (u_max - u_min) / (resU - 1);
+  float dv = (v_max - v_min) / (resV - 1);
+
+  for (int i = 0; i < resU - 1; i++) {
+        for (int j = 0; j < resV - 1; j++) {
+            float u0 = u_min + i * du;
+            float v0 = v_min + j * dv;
+            float u1 = u_min + (i+1) * du;
+            float v1 = v_min + (j+1) * dv;
+
+            // Points de la surface
+            arma::mat P00 = surfacePoint(u0, v0);
+            arma::mat P10 = surfacePoint(u1, v0);
+            arma::mat P01 = surfacePoint(u0, v1);
+            arma::mat P11 = surfacePoint(u1, v1);
+
+            // Courbures aux sommets
+            float c00 = computeCurvatureRadiusAt(u0, v0);
+            float c10 = computeCurvatureRadiusAt(u1, v0);
+            float c01 = computeCurvatureRadiusAt(u0, v1);
+            float c11 = computeCurvatureRadiusAt(u1, v1);
+
+            // Mapping des courbures en couleurs
+            auto colorFromCurv = [](float curv) {
+                float maxCurv = 5.0f; 
+                float val = curv / maxCurv;
+                if(val > 1.0f) val = 1.0f;
+
+                float R = val;
+                float G = 0.0f;
+                float B = 1.0f - val;
+                return std::tuple<float,float,float>(R,G,B);
+            };
+
+            float R00,G00,B00; std::tie(R00,G00,B00) = colorFromCurv(c00);
+            float R10,G10,B10; std::tie(R10,G10,B10) = colorFromCurv(c10);
+            float R01,G01,B01; std::tie(R01,G01,B01) = colorFromCurv(c01);
+            float R11,G11,B11; std::tie(R11,G11,B11) = colorFromCurv(c11);
+
+            // Dessin du quadrilatère
+            glBegin(GL_QUADS);
+            glColor3f(R00,G00,B00); glVertex3f(P00(0,0), P00(1,0), P00(2,0));
+            glColor3f(R10,G10,B10); glVertex3f(P10(0,0), P10(1,0), P10(2,0));
+            glColor3f(R11,G11,B11); glVertex3f(P11(0,0), P11(1,0), P11(2,0));
+            glColor3f(R01,G01,B01); glVertex3f(P01(0,0), P01(1,0), P01(2,0));
+            glEnd();
+        }
+    }
+}
 
 void initOpenGl()
 {
@@ -414,7 +472,8 @@ void affichage(void)
   glRotatef(cameraAngleX, 1., 0., 0.);
   glRotatef(cameraAngleY, 0., 1., 0.);
   affiche_repere();
-  displaySurface();
+  //displaySurface();
+  displayCurvatureSurface();
   displayFrenetFrameAt(u, v);
   drawParametricCircleOnSurface();
   glPopMatrix();
@@ -456,34 +515,26 @@ void clavier(unsigned char touche, int x, int y)
     break;
   case 'u':
     u += 0.05f;
-    if (u > knotU[n+1])
-        u = knotU[n+1];
-    if (u < knotU[p])
-        u = knotU[p];
+    if (u > u_max)
+        u = u_max;
     glutPostRedisplay();
     break;
   case 'U':
     u -= 0.05f;
-    if (u > knotU[n+1])
-        u = knotU[n+1];
-    if (u < knotU[p])
-        u = knotU[p];
+    if (u < u_min)
+        u = u_min;
     glutPostRedisplay();
     break;
   case 'v':
     v += 0.05f;
-    if (v > knotV[m+1])
-        v = knotV[m+1];
-    if (v < knotV[q])
-        v = knotV[q];
+    if (v > v_max)
+        v = v_max;
     glutPostRedisplay();
     break;
   case 'V':
     v -= 0.05f;
-    if (v > knotV[m+1])
-        v = knotV[m+1];
-    if (v < knotV[q])
-        v = knotV[q];
+    if (v < v_min)
+        v = v_min;
     glutPostRedisplay();
     break;
   case 'q':
