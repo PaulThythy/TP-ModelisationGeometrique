@@ -270,6 +270,28 @@ void displayFrenetFrameAt(float u, float v)
   glEnd();
 }
 
+void drawParametricCircleOnSurface() {
+    int nbSegments = 100;
+    glColor3f(1.0, 1.0, 0.0);
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i < nbSegments; i++) {
+        float theta = 2.0f * M_PI * float(i) / float(nbSegments);
+        float cu = 1.5f + 0.25f * cos(theta);
+        float cv = 1.5f + 0.25f * sin(theta);
+
+        arma::mat point = surfacePoint(cu, cv);
+
+        GLfloat pointArray[3] = {
+            static_cast<GLfloat>(point(0, 0)),
+            static_cast<GLfloat>(point(1, 0)),
+            static_cast<GLfloat>(point(2, 0))
+        };
+        glVertex3fv(pointArray);
+    }
+    glEnd();
+}
+
+
 void initOpenGl()
 {
 
@@ -394,6 +416,7 @@ void affichage(void)
   affiche_repere();
   displaySurface();
   displayFrenetFrameAt(u, v);
+  drawParametricCircleOnSurface();
   glPopMatrix();
   glFlush();
   glutSwapBuffers();
