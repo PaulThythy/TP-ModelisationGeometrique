@@ -38,9 +38,6 @@ float cameraDistance = 0.;
 const int width = 600;
 const int height = 600;
 
-GLfloat u = 0.1;
-GLfloat v = 0.1;
-
 // Degrés des NURBS en u et v
 int p = 3; // Degré en u
 int q = 3; // Degré en v
@@ -57,6 +54,9 @@ GLfloat ctrlPoints[4][4][3] = {
 
 GLfloat knotU[] = {0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 3.0, 3.0};
 GLfloat knotV[] = {0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 3.0, 3.0};
+
+GLfloat u = (knotU[p] + knotU[n+1]) * 0.5f;
+GLfloat v = (knotV[q] + knotV[m+1]) * 0.5f; 
 
 GLfloat weights[4][4] = {
     {1.0, 1.0, 1.0, 1.0},
@@ -433,26 +433,34 @@ void clavier(unsigned char touche, int x, int y)
     break;
   case 'u':
     u += 0.05f;
-    if (u > knotU[n + p + 1]) // ou la valeur maximale appropriée
-      u = knotU[n + p + 1];
+    if (u > knotU[n+1])
+        u = knotU[n+1];
+    if (u < knotU[p])
+        u = knotU[p];
     glutPostRedisplay();
     break;
   case 'U':
     u -= 0.05f;
-    if (u < knotU[0]) // ou la valeur minimale appropriée
-      u = knotU[0];
+    if (u > knotU[n+1])
+        u = knotU[n+1];
+    if (u < knotU[p])
+        u = knotU[p];
     glutPostRedisplay();
     break;
   case 'v':
     v += 0.05f;
-    if (v > knotV[n + p + 1]) // ou la valeur maximale appropriée
-      v = knotV[n + p + 1];
+    if (v > knotV[m+1])
+        v = knotV[m+1];
+    if (v < knotV[q])
+        v = knotV[q];
     glutPostRedisplay();
     break;
   case 'V':
     v -= 0.05f;
-    if (v < knotV[0]) // ou la valeur minimale appropriée
-      v = knotV[0];
+    if (v > knotV[m+1])
+        v = knotV[m+1];
+    if (v < knotV[q])
+        v = knotV[q];
     glutPostRedisplay();
     break;
   case 'q':
