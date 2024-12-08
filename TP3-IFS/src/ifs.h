@@ -9,20 +9,20 @@
 #include <GL/glut.h>
 
 using namespace arma;
-using namespace std ;
+using namespace std;
 
-class Ifs 
+class Ifs
 {
-	public:
+public:
 	vector<mat> mIfs;
 	mat mPrimitive;
 	mat mControlPoints;
-	vector <mat> mApproximation;
+	vector<mat> mApproximation;
 
 	Ifs(void);
 	~Ifs(void);
 	void display(int level);
-   	void ComputeApproximation(); // il faut peut être mettre des parametres
+	void ComputeApproximation(); // il faut peut être mettre des parametres
 };
 
 #endif
