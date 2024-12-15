@@ -11,7 +11,7 @@ void mouse(int, int, int, int);
 void mouseMotion(int, int);
 // void reshape(int,int);
 
-static int nbi = 20;
+static int nbi = 5;
 static int nb_transfo = 0;
 static Ifs *ifs = NULL;
 
