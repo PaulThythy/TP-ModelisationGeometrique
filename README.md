@@ -7,8 +7,4 @@ sudo apt update; sudo apt-get -y install libarmadillo-dev; sudo apt-get install 
 ```
 
 ## Exécution : 
-Tout les TP disposent d'un fichier run.sh permettant de les lancer rapidement via cette commande :
-
-```bash
-./run.sh
-```
+Les dossiers des TP ont tous un fichier README.md donnant les instructions pour lancer les programmes 
