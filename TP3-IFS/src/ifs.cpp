@@ -8,7 +8,8 @@ using namespace std;
 
 Ifs::Ifs()
 {
-    std::vector<arma::mat> transforms = {
+    //TRIANGLE DE SIERPINSKY
+    /*std::vector<arma::mat> transforms = {
         arma::mat{{1.0, .5, .5},
                   {0.0, 0.5, 0.0},
                   {0, 0.0, 0.5}},
@@ -21,12 +22,35 @@ Ifs::Ifs()
     };
     m_transforms = transforms;
 
-    m_primitive = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    m_primitive = {
+        {1, 0, 0}, 
+        {0, 1, 0}, 
+        {0, 0, 1}
+    };
 
     m_controlPoints = {
         {-1, 0, 1},
         {0, 1, 0},
         {0, 0, 0}
+    };*/
+
+    //ENSEMBLE DE CANTOR
+    std::vector<arma::mat> transforms = {
+        arma::mat{{1.0, 0.6666},
+                  {0.0, 0.3333}},
+        arma::mat{{0.3333, 0.0},
+                  {0.6666, 1.0}}
+    };
+    m_transforms = transforms;
+
+    m_primitive = {
+        {1, 0}, 
+        {0, 1}
+    };
+
+    m_controlPoints = {
+        {0.0, 1.0},
+        {1.0, 0.0}
     };
 }
 
@@ -37,7 +61,8 @@ Ifs::~Ifs(void)
 
 void Ifs::display()
 {
-    glColor3f(1, 1, 1);
+    //TRIANGLE DE SIERPINSKY
+    /*glColor3f(1, 1, 1);
     glBegin(GL_TRIANGLES);
 
     for(int i = 0; i < m_approximation.size(); ++i)
@@ -48,6 +73,19 @@ void Ifs::display()
         glVertex3f(colonne(0), colonne(1),colonne(2));
         colonne = m_approximation[i].col(2);
         glVertex3f(colonne(0), colonne(1),colonne(2));
+    }
+    glEnd();*/
+
+    //ENSEMBLE DE CANTOR
+    glColor3f(1, 1, 1);
+    glBegin(GL_LINES);
+
+    for(int i = 0; i < m_approximation.size(); ++i)
+    {
+        arma::colvec colonne = m_approximation[i].col(0);
+        glVertex2f(colonne(0), colonne(1));
+        colonne = m_approximation[i].col(1);
+        glVertex2f(colonne(0), colonne(1));
     }
     glEnd();
 }
