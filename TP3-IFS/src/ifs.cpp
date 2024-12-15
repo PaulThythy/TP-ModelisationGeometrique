@@ -35,7 +35,7 @@ Ifs::Ifs()
     };*/
 
     //ENSEMBLE DE CANTOR
-    std::vector<arma::mat> transforms = {
+    /*std::vector<arma::mat> transforms = {
         arma::mat{{1.0, 0.6666},
                   {0.0, 0.3333}},
         arma::mat{{0.3333, 0.0},
@@ -50,8 +50,58 @@ Ifs::Ifs()
 
     m_controlPoints = {
         {0.0, 1.0},
-        {1.0, 0.0}
+        {0.0, 1.0}
+    };*/
+
+    //COURBE DE BEZIER
+    std::vector<arma::mat> transforms = {
+        arma::mat{{1.0, 0.5, 0.25},
+                  {0.0, 0.5, 0.5},
+                  {0.0, 0.0, 0.25}},
+        arma::mat{{0.25, 0.0, 0.0},
+                  {0.5, 0.5, 0.0},
+                  {0.25, 0.5, 1.0}}
     };
+    m_transforms = transforms;
+
+    m_primitive = {
+        {1, 0, 0}, 
+        {0, 1, 0},
+        {0, 0, 1}
+    };
+
+    m_controlPoints = {
+        /*{0.0, 1.0},
+        {0.0, 1.0}*/
+
+        {-1, 0, 1},
+        {0, 1, 0},
+        {0, 0, 0}
+    };
+
+    //PYRAMIDE DE SIERPINSKY
+    /*m_primitive = {
+        {
+            {0, 1, 0.5},
+            {0, 0, 0},
+            {0, 0, 0.5}
+        },
+        {
+            {0, 0.5, 0.5},
+            {0, 0, 1},
+            {0, 0.5, 0}
+        },
+        {
+            {1, 0.5, 0.5},
+            {0, 1, 0},
+            {0, 0, 0.5}
+        },
+        {
+            {0, 0.5, 1},
+            {0, 1, 0},
+            {0, 0, 0}
+        }
+    };*/
 }
 
 Ifs::~Ifs(void)
@@ -77,6 +127,19 @@ void Ifs::display()
     glEnd();*/
 
     //ENSEMBLE DE CANTOR
+    /*glColor3f(1, 1, 1);
+    glBegin(GL_LINES);
+
+    for(int i = 0; i < m_approximation.size(); ++i)
+    {
+        arma::colvec colonne = m_approximation[i].col(0);
+        glVertex2f(colonne(0), colonne(1));
+        colonne = m_approximation[i].col(1);
+        glVertex2f(colonne(0), colonne(1));
+    }
+    glEnd();*/
+
+    //COURBE DE BEZIER
     glColor3f(1, 1, 1);
     glBegin(GL_LINES);
 
