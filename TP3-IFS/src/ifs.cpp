@@ -54,7 +54,7 @@ Ifs::Ifs()
     };*/
 
     //COURBE DE BEZIER
-    std::vector<arma::mat> transforms = {
+    /*std::vector<arma::mat> transforms = {
         arma::mat{{1.0, 0.5, 0.25},
                   {0.0, 0.5, 0.5},
                   {0.0, 0.0, 0.25}},
@@ -71,13 +71,10 @@ Ifs::Ifs()
     };
 
     m_controlPoints = {
-        /*{0.0, 1.0},
-        {0.0, 1.0}*/
-
         {-1, 0, 1},
         {0, 1, 0},
         {0, 0, 0}
-    };
+    };*/
 
     //PYRAMIDE DE SIERPINSKY
     /*m_primitive = {
@@ -102,6 +99,42 @@ Ifs::Ifs()
             {0, 0, 0}
         }
     };*/
+
+    std::vector<arma::mat> transforms = {
+        arma::mat{{1.0, 0.5, 0.5, 0.5},   // T1
+              {0.0, 0.5, 0.0, 0.0},
+              {0.0, 0.0, 0.5, 0.0},
+              {0.0, 0.0, 0.0, 0.5}},
+
+        arma::mat{{0.5, 0.0, 0.0, 0.0},   // T2
+                {0.5, 1.0, 0.5, 0.5},
+                {0.0, 0.0, 0.5, 0.0},
+                {0.0, 0.0, 0.0, 0.5}},
+
+        arma::mat{{0.5, 0.0, 0.0, 0.0},   // T3
+                {0.0, 0.5, 0.0, 0.0},
+                {0.5, 0.5, 1.0, 0.5},
+                {0.0, 0.0, 0.0, 0.5}},
+
+        arma::mat{{0.5, 0.0, 0.0, 0.0},   // T4
+                {0.0, 0.5, 0.0, 0.0},
+                {0.0, 0.0, 0.5, 0.0},
+                {0.5, 0.5, 0.5, 1.0}}
+    };
+    m_transforms = transforms;
+
+    m_primitive = {
+        {1, 0, 0, 0},
+        {0, 1, 0, 0},
+        {0, 0, 1, 0},
+        {0, 0, 0, 1}
+    };
+
+    m_controlPoints = {
+        {0, 1, 0, 0},
+        {0, 0, 1, 0},
+        {0, 0, 0, 1}
+    };
 }
 
 Ifs::~Ifs(void)
@@ -140,7 +173,7 @@ void Ifs::display()
     glEnd();*/
 
     //COURBE DE BEZIER
-    glColor3f(1, 1, 1);
+    /*glColor3f(1, 1, 1);
     glBegin(GL_LINES);
 
     for(int i = 0; i < m_approximation.size(); ++i)
@@ -150,6 +183,40 @@ void Ifs::display()
         colonne = m_approximation[i].col(1);
         glVertex2f(colonne(0), colonne(1));
     }
+    glEnd();*/
+
+    //PYRAMIDE DE SIERPINSKY
+    glColor3f(1, 1, 1);
+    glBegin(GL_TRIANGLES);
+
+    for (size_t i = 0; i < m_approximation.size(); ++i)
+    {
+        arma::colvec v0 = m_approximation[i].col(0);
+        arma::colvec v1 = m_approximation[i].col(1);
+        arma::colvec v2 = m_approximation[i].col(2);
+        arma::colvec v3 = m_approximation[i].col(3);
+
+        // Face 1 : (v0, v1, v2)
+        glVertex3f((GLfloat)v0(0), (GLfloat)v0(1), (GLfloat)v0(2));
+        glVertex3f((GLfloat)v1(0), (GLfloat)v1(1), (GLfloat)v1(2));
+        glVertex3f((GLfloat)v2(0), (GLfloat)v2(1), (GLfloat)v2(2));
+
+        // Face 2 : (v0, v1, v3)
+        glVertex3f((GLfloat)v0(0), (GLfloat)v0(1), (GLfloat)v0(2));
+        glVertex3f((GLfloat)v1(0), (GLfloat)v1(1), (GLfloat)v1(2));
+        glVertex3f((GLfloat)v3(0), (GLfloat)v3(1), (GLfloat)v3(2));
+
+        // Face 3 : (v0, v2, v3)
+        glVertex3f((GLfloat)v0(0), (GLfloat)v0(1), (GLfloat)v0(2));
+        glVertex3f((GLfloat)v2(0), (GLfloat)v2(1), (GLfloat)v2(2));
+        glVertex3f((GLfloat)v3(0), (GLfloat)v3(1), (GLfloat)v3(2));
+
+        // Face 4 : (v1, v2, v3)
+        glVertex3f((GLfloat)v1(0), (GLfloat)v1(1), (GLfloat)v1(2));
+        glVertex3f((GLfloat)v2(0), (GLfloat)v2(1), (GLfloat)v2(2));
+        glVertex3f((GLfloat)v3(0), (GLfloat)v3(1), (GLfloat)v3(2));
+    }
+
     glEnd();
 }
 
