@@ -14,16 +14,16 @@ using namespace std;
 class Ifs
 {
 public:
-	vector<mat> m_ifs;
+	vector<mat> m_transforms;
 	mat m_primitive;
 	mat m_controlPoints;
 	vector<mat> m_approximation;
-	int m_level;
 
-	Ifs(int level);
+	Ifs();
 	~Ifs(void);
 	void display();
-	void ComputeApproximation(); // il faut peut être mettre des parametres
+	void ComputeApproximation(int iteration);
+	void printApproximation();
 };
 
 #endif

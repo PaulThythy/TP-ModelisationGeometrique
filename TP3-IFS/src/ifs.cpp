@@ -6,44 +6,28 @@
 using namespace arma;
 using namespace std;
 
-Ifs::Ifs(int level)
+Ifs::Ifs()
 {
-    m_level = level;
-
-    // Triangle équilatéral en coordonnées cartésiennes homogènes
-    double sqrt3 = std::sqrt(3.0);
-    m_primitive = {
-        {0.0,     0.0,     1.0},  // Sommet A
-        {1.0,     0.0,     1.0},  // Sommet B
-        {0.5, sqrt3 / 2.0, 1.0}   // Sommet C
+    std::vector<arma::mat> transforms = {
+        arma::mat{{1.0, .5, .5},
+                  {0.0, 0.5, 0.0},
+                  {0, 0.0, 0.5}},
+        arma::mat{{0.5, 0.0, 0.0},
+                  {0.5, 1.0, 0.5},
+                  {0.0, 0.0, 0.5}},
+        arma::mat{{0.5, 0.0, 0.0},
+                  {0.0, 0.5, 0.0},
+                  {0.5, 0.5, 1.0}}
     };
+    m_transforms = transforms;
 
-    // Transformations du triangle de Sierpiński en cartésien homogène
-    mat T1 = {
-        {0.5, 0.0, 0.0},
-        {0.0, 0.5, 0.0},
-        {0.0, 0.0, 1.0}
+    m_primitive = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+
+    m_controlPoints = {
+        {-1, 0, 1},
+        {0, 1, 0},
+        {0, 0, 0}
     };
-
-    mat T2 = {
-        {0.5, 0.0, 0.5},
-        {0.0, 0.5, 0.0},
-        {0.0, 0.0, 1.0}
-    };
-
-    mat T3 = {
-        {0.5,    0.0,   0.25},
-        {0.0,    0.5, sqrt3 / 4.0},
-        {0.0,    0.0,   1.0}
-    };
-
-    // Ajouter les transformations au vecteur m_ifs
-    m_ifs.push_back(T1);
-    m_ifs.push_back(T2);
-    m_ifs.push_back(T3);
-
-    // Initialisation du vecteur d'approximation avec la primitive
-    m_approximation.push_back(m_primitive);
 }
 
 Ifs::~Ifs(void)
@@ -53,44 +37,74 @@ Ifs::~Ifs(void)
 
 void Ifs::display()
 {
-    if (m_level < 0 || (size_t)m_level >= m_approximation.size()) {
-        return;
-    }
+    glColor3f(1, 1, 1);
+    glBegin(GL_TRIANGLES);
 
-    mat points = m_approximation[m_level];
-    std::cout << points << std::endl;
-
-    glColor3f(1.0,0.0,0.0);
-    glBegin(GL_POINTS);
-    glPointSize(3.0f);
-    for (uword i = 0; i < points.n_rows; i++) {
-        float x = points(i,0);
-        float y = points(i,1);
-        glVertex2f(x,y);
+    for(int i = 0; i < m_approximation.size(); ++i)
+    {
+        arma::colvec colonne = m_approximation[i].col(0);
+        glVertex3f(colonne(0), colonne(1),colonne(2));
+        colonne = m_approximation[i].col(1);
+        glVertex3f(colonne(0), colonne(1),colonne(2));
+        colonne = m_approximation[i].col(2);
+        glVertex3f(colonne(0), colonne(1),colonne(2));
     }
     glEnd();
 }
 
-void Ifs::ComputeApproximation() // il faut peut être mettre des parametres
+void Ifs::ComputeApproximation(int iteration)
 {
-    for (int i = 1; i <= m_level; i++) {
-        mat prev = m_approximation[i-1];
-        mat current; 
-        // On applique toutes les transformations de l'IFS
-        for (size_t k = 0; k < m_ifs.size(); k++) {
-            mat transformed = prev * m_ifs[k]; 
-            // On empile les résultats
-            if (current.n_rows == 0)
-                current = transformed;
-            else
-                current = join_cols(current, transformed);
-        }
-        m_approximation.push_back(current);
+    m_approximation.resize(0);
+    m_approximation.push_back(m_primitive);
+
+    int nbTransforms = m_transforms.size();
+
+    //chaque itération ajoute une puissance de 2 de primitives
+    size_t nbMaxTransforms = m_approximation.size();
+    for (int i = 0; i < iteration; ++i) {
+        nbMaxTransforms *= m_transforms.size();
     }
-    
-    // mise à l'échelle pour rendre les points plus visibles
-    for (auto &matPoints : m_approximation) {
-        matPoints.col(0) *= 2.0;
-        matPoints.col(1) *= 2.0;
+
+    int n = sqrt(m_primitive.size());
+
+    m_approximation.clear();
+    m_approximation.resize(nbMaxTransforms);
+    //matrice identité à l'itération 0
+    m_approximation[0] = eye<arma::mat>(n, n);
+
+    int size = 1;
+
+    for (int i = 0; i < iteration; ++i)
+    {
+        //Pour chaque transform
+        //boucle à l'envers car : optimisation pour pas utiliser trop de mémoire
+        //rempli de gauche à droite, mais par itération ça rempli de droite à gauche
+        for (int j = nbTransforms-1; j >= 0; j--)
+        {
+            //Chaque feuille sera multiplié par la transform j
+            //size le nombre de primitives 
+            for (int k = 0; k < size; k++)
+            {
+                mat approx = m_transforms[j] * m_approximation[k];
+                m_approximation[j * size + k] = approx;
+            }
+        }
+        //MAJ du nombre de feuilles
+        size = size * nbTransforms;
+    }
+
+    //espace barycentrique vers l'espace modélisation
+    for (int i = 0; i < size; ++i)
+    {
+        m_approximation[i] = m_controlPoints * m_approximation[i];
+    }
+}
+
+void Ifs::printApproximation() 
+{
+    for (size_t i = 0; i < m_approximation.size(); ++i) {
+        std::cout << "Matrice " << i + 1 << ":" << std::endl;
+        m_approximation[i].print();
+        std::cout << std::endl;
     }
 }

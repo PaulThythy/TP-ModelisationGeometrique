@@ -11,7 +11,7 @@ void mouse(int, int, int, int);
 void mouseMotion(int, int);
 // void reshape(int,int);
 
-static int nbi = 5;
+static int nbi = 2;
 static int nb_transfo = 0;
 static Ifs *ifs = NULL;
 
@@ -41,8 +41,8 @@ int main(int argc, char **argv)
   glColor3f(1.0, 1.0, 1.0);
   glPointSize(1.0);
 
-  ifs = new Ifs(nbi);
-  ifs->ComputeApproximation();
+  ifs = new Ifs();
+  ifs->ComputeApproximation(nbi);
   /* enregistrement des fonctions de rappel */
   glutDisplayFunc(affichage);
   glutKeyboardFunc(clavier);
@@ -114,12 +114,13 @@ void clavier(unsigned char touche, int x, int y)
   {
   case '+': //* affichage du carre plein
     nbi++;
+    ifs->ComputeApproximation(nbi);
     glutPostRedisplay();
     break;
   case '-': //* affichage du carre plein
     nbi--;
-    if (nbi < 1)
-      nbi = 0;
+    if (nbi < 1) nbi = 0;
+    ifs->ComputeApproximation(nbi);
     glutPostRedisplay();
     break;
   case 'f': //* affichage en mode fil de fer
