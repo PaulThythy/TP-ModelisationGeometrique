@@ -9,7 +9,7 @@ using namespace std;
 Ifs::Ifs()
 {
     //TRIANGLE DE SIERPINSKY
-    /*std::vector<arma::mat> transforms = {
+    std::vector<arma::mat> transforms = {
         arma::mat{{1.0, .5, .5},
                   {0.0, 0.5, 0.0},
                   {0, 0.0, 0.5}},
@@ -32,7 +32,7 @@ Ifs::Ifs()
         {-1, 0, 1},
         {0, 1, 0},
         {0, 0, 0}
-    };*/
+    };
 
     //ENSEMBLE DE CANTOR
     /*std::vector<arma::mat> transforms = {
@@ -100,7 +100,7 @@ Ifs::Ifs()
         }
     };*/
 
-    std::vector<arma::mat> transforms = {
+    /*std::vector<arma::mat> transforms = {
         arma::mat{{1.0, 0.5, 0.5, 0.5},   // T1
               {0.0, 0.5, 0.0, 0.0},
               {0.0, 0.0, 0.5, 0.0},
@@ -134,7 +134,7 @@ Ifs::Ifs()
         {0, 1, 0, 0},
         {0, 0, 1, 0},
         {0, 0, 0, 1}
-    };
+    };*/
 }
 
 Ifs::~Ifs(void)
@@ -145,7 +145,7 @@ Ifs::~Ifs(void)
 void Ifs::display()
 {
     //TRIANGLE DE SIERPINSKY
-    /*glColor3f(1, 1, 1);
+    glColor3f(1, 1, 1);
     glBegin(GL_TRIANGLES);
 
     for(int i = 0; i < m_approximation.size(); ++i)
@@ -157,7 +157,7 @@ void Ifs::display()
         colonne = m_approximation[i].col(2);
         glVertex3f(colonne(0), colonne(1),colonne(2));
     }
-    glEnd();*/
+    glEnd();
 
     //ENSEMBLE DE CANTOR
     /*glColor3f(1, 1, 1);
@@ -186,7 +186,7 @@ void Ifs::display()
     glEnd();*/
 
     //PYRAMIDE DE SIERPINSKY
-    glColor3f(1, 1, 1);
+    /*glColor3f(1, 1, 1);
     glBegin(GL_TRIANGLES);
 
     for (size_t i = 0; i < m_approximation.size(); ++i)
@@ -217,7 +217,7 @@ void Ifs::display()
         glVertex3f((GLfloat)v3(0), (GLfloat)v3(1), (GLfloat)v3(2));
     }
 
-    glEnd();
+    glEnd();*/
 }
 
 void Ifs::ComputeApproximation(int iteration)
