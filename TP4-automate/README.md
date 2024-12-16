@@ -10,6 +10,4 @@ Dans le fichier run.sh, il est possible de modifier quel automate est utiliser p
 
 ### Exemples 
 
-![Stormtrooper](Screenshots/stormtrooper.png "Stormtrooper")
-![Monster](Screenshots/monster-under-bed.png "Monster Under Bed")
-![Sir Muttonchop](Screenshots/sir-muttonchop.png "Sir Muttonchop")
+![automateCarreSierp](images/automateCarreSierp.png "automateCarreSierp")
