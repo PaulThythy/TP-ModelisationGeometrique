@@ -2,4 +2,4 @@
 
 make clean;
 make;
-./bin/postscript automateCarreSierp.txt 5
+./bin/postscript automateCantor.txt 5

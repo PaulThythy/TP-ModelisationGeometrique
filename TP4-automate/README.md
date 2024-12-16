@@ -10,4 +10,12 @@ Dans le fichier run.sh, il est possible de modifier quel automate est utiliser p
 
 ### Exemples 
 
+automateBezier : 
+![automateBezier](images/automateBezier.png "automateBezier")
+
+automateCantor : 
+![automateCantor](images/automateCantor.png "automateCantor")
+
+automateCarreSierp : 
 ![automateCarreSierp](images/automateCarreSierp.png "automateCarreSierp")
+
