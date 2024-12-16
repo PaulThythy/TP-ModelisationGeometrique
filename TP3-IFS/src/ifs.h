@@ -19,11 +19,10 @@ public:
 	mat m_controlPoints;
 	vector<mat> m_approximation;
 
-	Ifs();
+	Ifs(void);
 	~Ifs(void);
 	void display();
 	void ComputeApproximation(int iteration);
-	void printApproximation();
 };
 
 #endif

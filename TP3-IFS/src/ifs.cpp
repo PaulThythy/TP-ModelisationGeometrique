@@ -6,7 +6,7 @@
 using namespace arma;
 using namespace std;
 
-Ifs::Ifs()
+Ifs::Ifs(void)
 {
     //TRIANGLE DE SIERPINSKY
     std::vector<arma::mat> transforms = {
@@ -137,10 +137,7 @@ Ifs::Ifs()
     };*/
 }
 
-Ifs::~Ifs(void)
-{
-
-}
+Ifs::~Ifs(void) {}
 
 void Ifs::display()
 {
@@ -265,14 +262,5 @@ void Ifs::ComputeApproximation(int iteration)
     for (int i = 0; i < size; ++i)
     {
         m_approximation[i] = m_controlPoints * m_approximation[i];
-    }
-}
-
-void Ifs::printApproximation() 
-{
-    for (size_t i = 0; i < m_approximation.size(); ++i) {
-        std::cout << "Matrice " << i + 1 << ":" << std::endl;
-        m_approximation[i].print();
-        std::cout << std::endl;
     }
 }

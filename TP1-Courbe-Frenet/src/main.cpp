@@ -211,6 +211,52 @@ void displayCircle() {
     }
 }
 
+//affiche le cercle osculateur
+void displayOsculatingCircle() {
+  // Calculer et dessiner le repère de Frenet
+  Vector3D point = computePointAt(current_u);
+  FrenetFrame frenet = computeFrenetFrameAt(current_u);
+
+  // Calculer le rayon de courbure
+  double radius = computeCurvatureAt(current_u);
+
+  // Vérifier si le rayon est valide
+  if (radius > 0 && radius < std::numeric_limits<double>::infinity())
+  {
+    // Calculer le centre du cercle osculateur
+    Vector3D center = point + frenet.N * radius;
+
+    // Dessiner le cercle osculateur
+    int num_segments = 100;   // Nombre de segments pour approximer le cercle
+    glColor3f(1.0, 1.0, 0.0); // Couleur du cercle osculateur (jaune)
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i < num_segments; ++i)
+    {
+      double theta = 2.0 * M_PI * double(i) / double(num_segments);
+      Vector3D circle_point = center + (frenet.N * cos(theta) + frenet.B * sin(theta)) * radius;
+      glVertex3f(circle_point.x, circle_point.y, circle_point.z);
+    }
+    glEnd();
+  }
+
+  glBegin(GL_LINES);
+  // Vecteur tangent T (rouge)
+  glColor3f(1.0, 0.0, 0.0);
+  glVertex3f(point.x, point.y, point.z);
+  glVertex3f(point.x + frenet.T.x, point.y + frenet.T.y, point.z + frenet.T.z);
+
+  // Vecteur normal N (vert)
+  glColor3f(0.0, 1.0, 0.0);
+  glVertex3f(point.x, point.y, point.z);
+  glVertex3f(point.x + frenet.N.x, point.y + frenet.N.y, point.z + frenet.N.z);
+
+  // Vecteur binormal B (bleu)
+  glColor3f(0.0, 0.0, 1.0);
+  glVertex3f(point.x, point.y, point.z);
+  glVertex3f(point.x + frenet.B.x, point.y + frenet.B.y, point.z + frenet.B.z);
+  glEnd();
+}
+
 void initOpenGl()
 {
 
@@ -280,7 +326,6 @@ int main(int argc, char **argv)
   glColor3f(1.0, 1.0, 1.0);
   glPointSize(1.0);
 
-  // ifs = new Ifs();
   /* enregistrement des fonctions de rappel */
   glutDisplayFunc(affichage);
   glutKeyboardFunc(clavier);
@@ -338,49 +383,7 @@ void affichage(void)
   affiche_repere();
   displayCourbe();
   displayCircle();
-
-  // Calculer et dessiner le repère de Frenet
-  Vector3D point = computePointAt(current_u);
-  FrenetFrame frenet = computeFrenetFrameAt(current_u);
-
-  // Calculer le rayon de courbure
-  double radius = computeCurvatureAt(current_u);
-
-  // Vérifier si le rayon est valide
-  if (radius > 0 && radius < std::numeric_limits<double>::infinity())
-  {
-    // Calculer le centre du cercle osculateur
-    Vector3D center = point + frenet.N * radius;
-
-    // Dessiner le cercle osculateur
-    int num_segments = 100;   // Nombre de segments pour approximer le cercle
-    glColor3f(1.0, 1.0, 0.0); // Couleur du cercle osculateur (jaune)
-    glBegin(GL_LINE_LOOP);
-    for (int i = 0; i < num_segments; ++i)
-    {
-      double theta = 2.0 * M_PI * double(i) / double(num_segments);
-      Vector3D circle_point = center + (frenet.N * cos(theta) + frenet.B * sin(theta)) * radius;
-      glVertex3f(circle_point.x, circle_point.y, circle_point.z);
-    }
-    glEnd();
-  }
-
-  glBegin(GL_LINES);
-  // Vecteur tangent T (rouge)
-  glColor3f(1.0, 0.0, 0.0);
-  glVertex3f(point.x, point.y, point.z);
-  glVertex3f(point.x + frenet.T.x, point.y + frenet.T.y, point.z + frenet.T.z);
-
-  // Vecteur normal N (vert)
-  glColor3f(0.0, 1.0, 0.0);
-  glVertex3f(point.x, point.y, point.z);
-  glVertex3f(point.x + frenet.N.x, point.y + frenet.N.y, point.z + frenet.N.z);
-
-  // Vecteur binormal B (bleu)
-  glColor3f(0.0, 0.0, 1.0);
-  glVertex3f(point.x, point.y, point.z);
-  glVertex3f(point.x + frenet.B.x, point.y + frenet.B.y, point.z + frenet.B.z);
-  glEnd();
+  displayOsculatingCircle();
 
   glPopMatrix();
   /* on force l'affichage du resultat */
@@ -401,14 +404,12 @@ void clavier(unsigned char touche, int x, int y)
     current_u += deltaU;
     if (current_u > u_max)
       current_u = u_max;
-    std::cout << "currentU : " << current_u << std::endl;
     glutPostRedisplay();
     break;
   case 'z': // Diminuer u
     current_u -= deltaU;
     if (current_u < u_min)
       current_u = u_min;
-    std::cout << "currentU : " << current_u << std::endl;
     glutPostRedisplay();
     break;
   case 'f': //* affichage en mode fil de fer

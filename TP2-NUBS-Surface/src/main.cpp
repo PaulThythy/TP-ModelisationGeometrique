@@ -55,6 +55,7 @@ GLfloat ctrlPoints[4][4][3] = {
 GLfloat knotU[] = {0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 3.0, 3.0};
 GLfloat knotV[] = {0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 3.0, 3.0};
 
+//Pour que le repère soit au milieu de la surface
 GLfloat u = (knotU[p] + knotU[n+1]) * 0.5f;
 GLfloat v = (knotV[q] + knotV[m+1]) * 0.5f; 
 
@@ -416,7 +417,6 @@ int main(int argc, char **argv)
   glColor3f(1.0, 1.0, 1.0);
   glPointSize(1.0);
 
-  // ifs = new Ifs();
   /* enregistrement des fonctions de rappel */
   glutDisplayFunc(affichage);
   glutKeyboardFunc(clavier);
