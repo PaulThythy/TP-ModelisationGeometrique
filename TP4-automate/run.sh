@@ -2,4 +2,4 @@
 
 make clean;
 make;
-./bin/postscript automateBezier.txt 5
+./bin/postscript automateCarreSierp.txt 5
