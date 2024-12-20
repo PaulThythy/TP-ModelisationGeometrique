@@ -221,10 +221,8 @@ SurfaceFrame computeSurfaceFrameAt(float u, float v)
   // Premier vecteur tangent T (direction u)
   arma::mat T = arma::normalise(du);
 
-  // Second vecteur tangent B (direction orthogonale dans le plan tangent)
-  // On utilise Gram-Schmidt : on projette dv sur T et on soustrait pour orthogonaliser.
-  arma::mat dv_proj = dv - arma::dot(dv, T)*T;
-  arma::mat B = arma::normalise(dv_proj);
+  // Second vecteur tangent B (direction v)
+  arma::mat B = arma::normalise(dv);
 
   return {T, N, B};
 }
