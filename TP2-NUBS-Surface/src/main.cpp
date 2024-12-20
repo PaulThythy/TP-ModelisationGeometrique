@@ -71,6 +71,7 @@ GLfloat weights[4][4] = {
     {1.0, 1.0, 1.0, 1.0}};
 
 // Trouver l'indice du noeud (knot span) pour un paramètre donné
+// En fonction du nombre de points de contrôle, du degré, de la position sur la surface
 int findKnotSpan(int n, int p, float u, GLfloat knotVector[])
 {
   if (u >= knotVector[n + 1])

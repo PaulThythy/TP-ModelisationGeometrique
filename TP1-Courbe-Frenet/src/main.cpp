@@ -191,7 +191,7 @@ void displayCircle() {
   int nCircleSegments = 20; // Nombre de segments du cercle
     double circleRadius = 0.2; // Rayon du cercle
     const double EPSILON = 1e-6;
-    double deltaU_circle = (u_max - u_min) / (resolution * 10); // Ajustez le facteur selon vos besoins
+    double deltaU_circle = (u_max - u_min) / (resolution * 10);
 
     glColor3f(0.7f, 0.7f, 0.7f); // Couleur des cercles
 
@@ -233,7 +233,7 @@ void displayOsculatingCircle() {
     for (int i = 0; i < num_segments; ++i)
     {
       double theta = 2.0 * M_PI * double(i) / double(num_segments);
-      Vector3D circle_point = center + (frenet.N * cos(theta) + frenet.B * sin(theta)) * radius;
+      Vector3D circle_point = center + (frenet.T * cos(theta) + frenet.N * sin(theta)) * radius;
       glVertex3f(circle_point.x, circle_point.y, circle_point.z);
     }
     glEnd();
